@@ -4,7 +4,7 @@ Date: 2026-10-07
 
 ## Status
 
-Accepted
+Accepted. Its caching argument is corrected by [ADR-0013](0013-responses-are-not-cacheable.md): responses are not cacheable, so that every request is counted.
 
 ## Context
 

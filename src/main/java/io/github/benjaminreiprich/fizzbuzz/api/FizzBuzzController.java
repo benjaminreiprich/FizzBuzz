@@ -11,8 +11,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,7 +60,9 @@ class FizzBuzzController {
                                                     "instance":"/api/v1/fizzbuzz",\
                                                     "errors":[{"field":"limit",\
                                                     "message":"must be less than or equal to 10000"}]}""")))
-    List<String> fizzBuzz(@ParameterObject @Valid FizzBuzzRequest request) {
-        return fizzBuzzService.fizzBuzz(request.toQuery());
+    ResponseEntity<List<String>> fizzBuzz(@ParameterObject @Valid FizzBuzzRequest request) {
+        List<String> sequence = fizzBuzzService.fizzBuzz(request.toQuery());
+        // A cached response would never reach the server, so the request would be missing from the statistics.
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(sequence);
     }
 }

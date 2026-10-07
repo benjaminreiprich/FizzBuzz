@@ -6,6 +6,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -51,6 +52,12 @@ class FizzBuzzControllerTest {
                 .andExpect(content().json("""
                                 ["1","2","fizz","4","buzz","fizz","7","8","fizz","buzz","11","fizz","13","14","fizzbuzz"]
                                 """, JsonCompareMode.STRICT));
+    }
+
+    // A cached response would never reach the server, so the request would be missing from the statistics (ADR-0013).
+    @Test
+    void should_forbid_caching_so_that_every_request_is_counted() throws Exception {
+        perform(validParameters()).andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"));
     }
 
     static Stream<Arguments> inputsAllowedByTheStatement() {

@@ -7,7 +7,9 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,10 +45,12 @@ class StatisticsController {
                                 @ExampleObject(name = "no request yet", value = """
                                         {"request":null,"hits":0}""")
                             }))
-    StatisticsResponse mostFrequentRequest() {
-        return statisticsService
+    ResponseEntity<StatisticsResponse> mostFrequentRequest() {
+        StatisticsResponse statistics = statisticsService
                 .mostFrequentRequest()
                 .map(StatisticsResponse::of)
                 .orElse(StatisticsResponse.NO_REQUEST_YET);
+        // Statistics change with every FizzBuzz request: a cached copy would be stale.
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(statistics);
     }
 }

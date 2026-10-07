@@ -56,6 +56,8 @@ Interactive documentation is served by Swagger UI at `/swagger-ui.html`, and the
 
 All five parameters are required. Multiples follow arithmetic: a negative divisor has the same multiples as its absolute value, and `0` has no multiple between 1 and `limit`, so it replaces nothing.
 
+Responses carry `Cache-Control: no-store`: a cached response would never reach the server, and the request would be missing from the statistics ([ADR-0013](docs/adr/0013-responses-are-not-cacheable.md)).
+
 ```bash
 curl "http://localhost:8080/api/v1/fizzbuzz?int1=3&int2=5&limit=15&str1=fizz&str2=buzz"
 ```
@@ -183,6 +185,7 @@ GET /api/v1/statistics
 - Statistics semantics: zero hits before any request, only valid requests counted, parameters compared as values, first to reach a count wins ties — [ADR-0010](docs/adr/0010-statistics-semantics.md)
 - Probes and Prometheus metrics on a separate management port, JSON logs, graceful shutdown, Swagger kept in production — [ADR-0011](docs/adr/0011-operability.md)
 - Multi-stage Docker image: JRE only, non-root, layered jar, health check — [ADR-0012](docs/adr/0012-container-image.md)
+- `Cache-Control: no-store` on both endpoints, so that every request reaches the server and is counted — [ADR-0013](docs/adr/0013-responses-are-not-cacheable.md)
 
 ## Configuration
 

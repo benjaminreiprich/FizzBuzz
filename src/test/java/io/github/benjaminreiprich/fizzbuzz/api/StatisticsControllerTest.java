@@ -5,6 +5,7 @@ import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.benjaminreiprich.fizzbuzz.application.StatisticsService;
@@ -55,6 +56,14 @@ class StatisticsControllerTest {
         mockMvc.perform(get(URL)).andExpect(status().isOk()).andExpect(content().json("""
                                 {"request": {"int1": 3, "int2": 5, "limit": 15, "str1": "fizz", "str2": "buzz"},\
                                  "hits": 42}""", JsonCompareMode.STRICT));
+    }
+
+    // Statistics change with every FizzBuzz request: a cached copy would be stale (ADR-0013).
+    @Test
+    void should_forbid_caching_of_statistics() throws Exception {
+        given(statisticsService.mostFrequentRequest()).willReturn(Optional.empty());
+
+        mockMvc.perform(get(URL)).andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"));
     }
 
     // Compared as text: JSON comparison libraries may round numbers this large.
