@@ -6,11 +6,11 @@
 
 A Spring Boot web service exposing a configurable FizzBuzz: given three integers `int1`, `int2`, `limit` and two strings `str1`, `str2`, it returns the numbers from 1 to `limit`, where multiples of `int1` are replaced by `str1`, multiples of `int2` by `str2`, and multiples of both by `str1str2`. A statistics endpoint reports the most frequent request and its number of hits.
 
-**Current state:** both endpoints are available.
+**Current state:** both endpoints are available. Each sentence of the statement is mapped to its implementation and tests in [Statement compliance](#statement-compliance).
 
 ## Quick start
 
-Prerequisite: **JDK 25**. Maven is not needed; the Maven Wrapper downloads the right version on first use. On Windows, use `mvnw.cmd` instead of `./mvnw`.
+Prerequisite: **JDK 25**, with `JAVA_HOME` pointing to it (after installing a JDK, open a new terminal so that it sees the variable). Maven is not needed; the Maven Wrapper downloads the right version on first use. On Windows, use `mvnw.cmd` instead of `./mvnw`.
 
 ```bash
 # Build, run all tests and quality gates
@@ -111,7 +111,7 @@ curl "http://localhost:8080/api/v1/fizzbuzz?int1=0x10&int2=5&limit=100000&str1=f
 
 | Status | When |
 |---|---|
-| 400 | a parameter is missing, an integer is not in decimal notation, or a limit below is exceeded |
+| 400 | a parameter is missing, an integer is not in decimal notation, or a bound from [Limits](#limits) is exceeded |
 | 405 | any method other than GET |
 | 500 | unexpected error; the body only says `"An unexpected error occurred."`, details are logged server-side |
 
@@ -125,6 +125,22 @@ The statement accepts any integer and any string. Two bounds are the **only deli
 | `str1`, `str2` length | 50 characters | Keeps that worst case bounded (counted in Unicode code points, so an emoji counts as one). |
 
 Both are configuration, not code: change or relax them with the properties below. Rationale in [ADR-0007](docs/adr/0007-operational-limits.md).
+
+### Statement compliance
+
+| Statement | Implementation | Proven by |
+|---|---|---|
+| "Accepts five parameters: three integers `int1`, `int2` and `limit`, and two strings `str1` and `str2`" | `FizzBuzzRequest` binds the five query parameters; integers of any size ([ADR-0005](docs/adr/0005-accept-every-input-allowed-by-the-statement.md)), any string | `FizzBuzzControllerTest.should_accept_every_input_allowed_by_the_statement`, `should_reject_missing_parameter` |
+| "Returns a list of strings with numbers from 1 to `limit`" | `FizzBuzzGenerator`, JSON array of strings | `FizzBuzzGeneratorPropertiesTest.should_return_one_term_per_number_from_1_to_limit`, `should_keep_the_number_when_multiple_of_neither` |
+| "All multiples of `int1` are replaced by `str1`" | `FizzBuzzGenerator.termFor` | `FizzBuzzGeneratorPropertiesTest.should_return_str1_when_number_is_multiple_of_int1_only` |
+| "All multiples of `int2` are replaced by `str2`" | `FizzBuzzGenerator.termFor` | `FizzBuzzGeneratorPropertiesTest.should_return_str2_when_number_is_multiple_of_int2_only` |
+| "All multiples of `int1` and `int2` are replaced by `str1str2`" | `FizzBuzzGenerator.termFor`, checked first | `FizzBuzzGeneratorPropertiesTest.should_return_str1str2_when_number_is_multiple_of_both`; `FizzBuzzGeneratorTest` (LCM, not product) |
+| "Ready for production" | Bounded requests, Problem Details without leaks, probes and metrics on an internal port, JSON logs, graceful shutdown, non-root Docker image | `FizzBuzzControllerTest.should_reject_limit_above_the_configured_maximum`, `ApiExceptionHandlerTest`, `ActuatorEndpointsTest`, CI `docker` job |
+| "Easy to maintain by other developers" | Layered architecture, formatting and coverage gates, ADRs, this README | `ArchitectureTest`, `./mvnw verify` |
+| Bonus: statistics endpoint that "accepts no parameter" | `GET /api/v1/statistics`; parameters sent anyway are ignored | `StatisticsControllerTest.should_ignore_query_parameters` |
+| "Return the parameters corresponding to the most used request, as well as the number of hits" | `InMemoryRequestStatistics`, `StatisticsResponse` ([ADR-0010](docs/adr/0010-statistics-semantics.md)) | `StatisticsIntegrationTest.should_report_the_most_frequent_valid_request_and_its_hits`, `InMemoryRequestStatisticsPropertiesTest`, `InMemoryRequestStatisticsConcurrencyTest` |
+
+The only deviations are the two bounds in [Limits](#limits): `limit` up to 10 000 and strings up to 50 characters, both configurable.
 
 ## Architecture
 
@@ -256,6 +272,15 @@ Known limitations:
 
 - Statistics are kept in memory: they are lost on restart and not shared between instances. The `RequestStatistics` port exists so that a shared store such as Redis can replace the in-memory one ([ADR-0009](docs/adr/0009-in-memory-statistics-store.md)).
 - The number of distinct requests tracked is unbounded (about 200 bytes each): a client sending millions of different valid requests grows memory. Keeping the answer exact requires it; an approximate algorithm would be a deviation from the statement.
+
+What I'd do next with more time:
+
+- **Shared statistics store**: a Redis sorted set (`ZINCRBY`, then `ZREVRANGE 0 0 WITHSCORES`) behind the existing `RequestStatistics` port, so that statistics survive restarts and are shared between instances.
+- **Rate limiting** per client, ideally at the API gateway, against abuse and against memory growth from millions of distinct requests.
+- **Load test** (Gatling or k6) to size instances against the ~1 MB worst-case response.
+- **Image publishing and scanning**: push the image to a registry (e.g. GHCR) on each release, and scan it for vulnerabilities (e.g. Trivy) in CI.
+- **Deployment manifests** (Kubernetes or Helm) with probes on port 8081 and a termination grace period of at least 30 s.
+- **Distributed tracing** (Micrometer Tracing with OpenTelemetry) as soon as the service calls or is called by other services.
 
 ## Project history
 
