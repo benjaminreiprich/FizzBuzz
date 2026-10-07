@@ -4,7 +4,7 @@ import io.github.benjaminreiprich.fizzbuzz.config.FizzBuzzProperties;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-// Instantiated by Spring's constraint validator factory, which injects the configured limits.
+// Spring creates this validator and passes the configured limits to its constructor.
 public class MaxStringLengthValidator implements ConstraintValidator<MaxStringLength, String> {
 
     private final int maxStringLength;
@@ -15,10 +15,18 @@ public class MaxStringLengthValidator implements ConstraintValidator<MaxStringLe
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
-        // Counted in code points, so that an emoji counts as one character rather than two UTF-16 units.
-        if (value == null || value.codePointCount(0, value.length()) <= maxStringLength) {
+        // A missing value is already reported by @NotNull.
+        if (value == null) {
             return true;
         }
+
+        // Counted in characters as a user sees them: value.length() would count an emoji as 2.
+        int length = value.codePointCount(0, value.length());
+        if (length <= maxStringLength) {
+            return true;
+        }
+
+        // The annotation's default message cannot contain the configured value: we disable it and add our own.
         context.disableDefaultConstraintViolation();
         context.buildConstraintViolationWithTemplate("length must be less than or equal to " + maxStringLength)
                 .addConstraintViolation();

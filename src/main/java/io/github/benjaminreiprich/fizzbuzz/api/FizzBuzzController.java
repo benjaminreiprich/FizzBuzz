@@ -23,6 +23,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/fizzbuzz")
 class FizzBuzzController {
 
+    // Sample bodies shown in Swagger UI.
+    private static final String SEQUENCE_EXAMPLE = """
+            ["1", "2", "fizz", "4", "buzz", "fizz", "7", "8", "fizz", "buzz", "11", "fizz", "13", "14", "fizzbuzz"]
+            """;
+    private static final String INVALID_PARAMETERS_EXAMPLE = """
+            {
+              "title": "Bad Request",
+              "status": 400,
+              "detail": "Invalid request parameters.",
+              "instance": "/api/v1/fizzbuzz",
+              "errors": [{"field": "limit", "message": "must be less than or equal to 10000"}]
+            }
+            """;
+
     private final FizzBuzzService fizzBuzzService;
 
     FizzBuzzController(FizzBuzzService fizzBuzzService) {
@@ -42,10 +56,7 @@ class FizzBuzzController {
                     @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             array = @ArraySchema(schema = @Schema(type = "string")),
-                            examples =
-                                    @ExampleObject(
-                                            value = "[\"1\",\"2\",\"fizz\",\"4\",\"buzz\",\"fizz\",\"7\",\"8\","
-                                                    + "\"fizz\",\"buzz\",\"11\",\"fizz\",\"13\",\"14\",\"fizzbuzz\"]")))
+                            examples = @ExampleObject(value = SEQUENCE_EXAMPLE)))
     @ApiResponse(
             responseCode = "400",
             description = "Missing parameter, integer not in decimal notation, or limit exceeded."
@@ -54,12 +65,7 @@ class FizzBuzzController {
                     @Content(
                             mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
                             schema = @Schema(implementation = ProblemDetail.class),
-                            examples = @ExampleObject(value = """
-                                                    {"title":"Bad Request","status":400,\
-                                                    "detail":"Invalid request parameters.",\
-                                                    "instance":"/api/v1/fizzbuzz",\
-                                                    "errors":[{"field":"limit",\
-                                                    "message":"must be less than or equal to 10000"}]}""")))
+                            examples = @ExampleObject(value = INVALID_PARAMETERS_EXAMPLE)))
     ResponseEntity<List<String>> fizzBuzz(@ParameterObject @Valid FizzBuzzRequest request) {
         List<String> sequence = fizzBuzzService.fizzBuzz(request.toQuery());
         // A cached response would never reach the server, so the request would be missing from the statistics.

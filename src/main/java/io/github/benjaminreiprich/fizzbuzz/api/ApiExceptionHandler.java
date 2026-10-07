@@ -1,6 +1,7 @@
 package io.github.benjaminreiprich.fizzbuzz.api;
 
 import io.github.benjaminreiprich.fizzbuzz.api.dto.InvalidParameter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -25,6 +27,13 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
+    // Sorting makes the response independent of the order in which the validator reports errors.
+    private static final Comparator<InvalidParameter> BY_FIELD_THEN_MESSAGE =
+            Comparator.comparing(InvalidParameter::field).thenComparing(InvalidParameter::message);
+
+    // Spring calls this method when @Valid rejects a request. The base class already builds a 400 Problem Details
+    // body (exception.getBody()); we complete it with the list of invalid parameters, then let the base class
+    // (handleExceptionInternal) write the response as it does for every other error.
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException exception, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
@@ -34,15 +43,16 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(exception, problem, headers, status, request);
     }
 
-    // Sorted so that the response does not depend on the validator's iteration order.
     private static List<InvalidParameter> invalidParameters(MethodArgumentNotValidException exception) {
-        return exception.getFieldErrors().stream()
-                .map(error -> new InvalidParameter(error.getField(), error.getDefaultMessage()))
-                .sorted(Comparator.comparing(InvalidParameter::field).thenComparing(InvalidParameter::message))
-                .toList();
+        List<InvalidParameter> invalidParameters = new ArrayList<>();
+        for (FieldError error : exception.getFieldErrors()) {
+            invalidParameters.add(new InvalidParameter(error.getField(), error.getDefaultMessage()));
+        }
+        invalidParameters.sort(BY_FIELD_THEN_MESSAGE);
+        return invalidParameters;
     }
 
-    // The exception is logged with its stack trace, but nothing about it reaches the client.
+    // Any other exception: logged with its stack trace, but nothing about it reaches the client.
     @ExceptionHandler(Exception.class)
     ProblemDetail handleUnexpected(Exception exception) {
         LOGGER.error("Unexpected error while handling a request", exception);

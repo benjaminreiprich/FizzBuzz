@@ -5,7 +5,7 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import java.math.BigInteger;
 
-// Instantiated by Spring's constraint validator factory, which injects the configured limits.
+// Spring creates this validator and passes the configured limits to its constructor.
 public class MaxLimitValidator implements ConstraintValidator<MaxLimit, String> {
 
     private final BigInteger maxLimit;
@@ -16,12 +16,19 @@ public class MaxLimitValidator implements ConstraintValidator<MaxLimit, String> 
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
-        if (value == null || !DecimalIntegerValidator.isDecimalInteger(value)) {
+        // A missing value or a non-integer is already reported by @NotNull or @DecimalInteger. Accepting it here
+        // avoids a second, confusing error message for the same parameter.
+        boolean canBeCompared = value != null && DecimalIntegerValidator.isDecimalInteger(value);
+        if (!canBeCompared) {
             return true;
         }
-        if (new BigInteger(value).compareTo(maxLimit) <= 0) {
+
+        boolean withinMaxLimit = new BigInteger(value).compareTo(maxLimit) <= 0;
+        if (withinMaxLimit) {
             return true;
         }
+
+        // The annotation's default message cannot contain the configured value: we disable it and add our own.
         context.disableDefaultConstraintViolation();
         context.buildConstraintViolationWithTemplate("must be less than or equal to " + maxLimit)
                 .addConstraintViolation();
