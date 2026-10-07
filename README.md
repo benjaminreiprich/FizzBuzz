@@ -215,7 +215,10 @@ Everything runs with `./mvnw verify`, which also enforces:
 - **Formatting**: Spotless with palantir-java-format; the build fails on unformatted code.
 - **Coverage**: JaCoCo requires at least 90% line coverage on the `domain` and `application` packages. The HTML report is written to `target/site/jacoco/index.html`.
 
-CI (GitHub Actions, `.github/workflows/ci.yml`) runs `./mvnw -B verify` on JDK 25 for every push to `main` and every pull request.
+CI (GitHub Actions, `.github/workflows/ci.yml`) runs on every push to `main` and every pull request:
+
+1. `./mvnw -B verify` on JDK 25 (tests, formatting, coverage);
+2. then builds the Docker image, starts it and checks that the `HEALTHCHECK` turns healthy, both endpoints answer, the process is not root, every log line is JSON, and `SIGTERM` triggers a graceful shutdown.
 
 ## Observability
 
@@ -256,3 +259,4 @@ Known limitations:
 - **Statement compliance fix**: the domain accepts any integer and any string, as the statement requires (ADR-0005).
 - **Phase 2 — FizzBuzz endpoint**: `GET /api/v1/fizzbuzz` with validated parameters, configurable limits, Problem Details errors and OpenAPI / Swagger UI documentation.
 - **Phase 3 — Statistics**: `GET /api/v1/statistics` backed by a thread-safe in-memory store behind the `RequestStatistics` port.
+- **Phase 4 — Production readiness**: health probes and Prometheus metrics on a separate management port, JSON logs, graceful shutdown, Docker image built and smoke-tested in CI.

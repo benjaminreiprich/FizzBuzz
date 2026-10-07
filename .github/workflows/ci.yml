@@ -28,3 +28,47 @@ jobs:
 
       - name: Build, test and check quality gates
         run: ./mvnw -B --no-transfer-progress verify
+
+  # Docker is not installed on the development machine: the image is built and checked here on every push.
+  docker:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the image
+        run: docker build -t fizzbuzz-api:ci .
+
+      - name: Start the container
+        run: docker run -d --name fizzbuzz -p 8080:8080 -p 8081:8081 fizzbuzz-api:ci
+
+      - name: Wait until the HEALTHCHECK reports healthy
+        run: |
+          for attempt in $(seq 1 30); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' fizzbuzz)
+            echo "health: $status"
+            [ "$status" = "healthy" ] && exit 0
+            sleep 2
+          done
+          exit 1
+
+      - name: Call both endpoints
+        run: |
+          curl --fail --silent "http://localhost:8080/api/v1/fizzbuzz?int1=3&int2=5&limit=15&str1=fizz&str2=buzz" \
+            | grep --quiet '"14","fizzbuzz"'
+          curl --fail --silent http://localhost:8080/api/v1/statistics | grep --quiet '"hits":1'
+
+      - name: Check the process is not root and every log line is JSON
+        run: |
+          test "$(docker exec fizzbuzz id -u)" != "0"
+          docker logs fizzbuzz 2>&1 | jq --exit-status . > /dev/null
+
+      - name: Check SIGTERM triggers a graceful shutdown
+        run: |
+          docker stop fizzbuzz
+          docker logs fizzbuzz 2>&1 | grep --quiet "Commencing graceful shutdown"
+
+      - name: Show container logs
+        if: failure()
+        run: docker logs fizzbuzz
