@@ -33,6 +33,10 @@
 
     <properties>
         <java.version>25</java.version>
+        <spotless-maven-plugin.version>3.10.3</spotless-maven-plugin.version>
+        <palantir-java-format.version>2.102.0</palantir-java-format.version>
+        <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+        <coverage.line.minimum>0.90</coverage.line.minimum>
         <!-- Default so that @{argLine} resolves even when no plugin (e.g. JaCoCo) contributes to it. -->
         <argLine/>
     </properties>
@@ -99,6 +103,90 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- verify fails on unformatted code; run ./mvnw spotless:apply to fix it. -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless-maven-plugin.version}</version>
+                <configuration>
+                    <java>
+                        <palantirJavaFormat>
+                            <version>${palantir-java-format.version}</version>
+                        </palantirJavaFormat>
+                    </java>
+                    <formats>
+                        <format>
+                            <includes>
+                                <include>*.md</include>
+                                <include>docs/**/*.md</include>
+                                <include>src/**/*.yml</include>
+                                <include>.github/**/*.yml</include>
+                            </includes>
+                            <excludes>
+                                <!-- Git-ignored local files must never break the build. -->
+                                <exclude>NOTES.md</exclude>
+                                <exclude>CLAUDE.md</exclude>
+                            </excludes>
+                            <trimTrailingWhitespace/>
+                            <endWithNewline/>
+                        </format>
+                    </formats>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <!-- The gate targets business logic. Framework wiring is exercised by
+                                 Spring tests but its line ratio says little about correctness. -->
+                            <includes>
+                                <include>io/github/benjaminreiprich/fizzbuzz/domain/**</include>
+                                <include>io/github/benjaminreiprich/fizzbuzz/application/**</include>
+                            </includes>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${coverage.line.minimum}</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
