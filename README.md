@@ -37,7 +37,7 @@ Current package layout:
 src/main/java/io/github/benjaminreiprich/fizzbuzz/
 ├── FizzBuzzApplication.java     Spring Boot entry point
 └── domain/                      pure Java, no framework dependency
-    ├── FizzBuzzQuery.java       the five parameters, valid by construction
+    ├── FizzBuzzQuery.java       the five parameters: any integers, any strings
     └── FizzBuzzGenerator.java   FizzBuzzQuery -> List<String>
 ```
 
@@ -50,7 +50,7 @@ The `api`, `application` and `infrastructure` layers are not implemented yet.
 - Decisions are recorded as ADRs in `docs/adr/` — [ADR-0001](docs/adr/0001-record-architecture-decisions.md)
 - Java 25 and Spring Boot 4.1.1 — [ADR-0002](docs/adr/0002-java-25-and-spring-boot-4-1.md)
 - Formatting and coverage gates enforced by `./mvnw verify` from the first commit — [ADR-0003](docs/adr/0003-quality-gates-in-the-build.md)
-- The domain enforces only what makes FizzBuzz meaningful; operational limits are configuration — [ADR-0004](docs/adr/0004-domain-invariants-vs-configurable-limits.md)
+- The domain accepts every input allowed by the statement (any integer, any string; operational limits are configuration) — [ADR-0005](docs/adr/0005-accept-every-input-allowed-by-the-statement.md), supersedes [ADR-0004](docs/adr/0004-domain-invariants-vs-configurable-limits.md)
 
 ## Configuration
 
@@ -60,7 +60,7 @@ Not implemented yet.
 
 | Kind | Status |
 |---|---|
-| Unit | `FizzBuzzQueryTest` (invariants), `FizzBuzzGeneratorTest` (specification example and edge cases) |
+| Unit | `FizzBuzzQueryTest` (accepted inputs, equality), `FizzBuzzGeneratorTest` (specification example and edge cases: zero, negative and huge divisors, non-positive limits, empty strings) |
 | Property-based (jqwik) | `FizzBuzzGeneratorPropertiesTest`: each rule of the specification checked on 1,000 random queries |
 | Architecture (ArchUnit) | `ArchitectureTest`: the domain depends only on the JDK |
 | Smoke test (Spring context starts) | `FizzBuzzApplicationTests` |
@@ -84,4 +84,5 @@ Not implemented yet.
 ## Project history
 
 - **Phase 0 — Bootstrap**: Spring Boot 4.1.1 / Java 25 project with Maven Wrapper, Spotless and JaCoCo gates, smoke test, GitHub Actions CI, first ADRs.
-- **Phase 1 — Domain**: `FizzBuzzQuery` (invariants enforced at construction) and `FizzBuzzGenerator`, covered by example-based and property-based (jqwik) tests; domain purity enforced by ArchUnit.
+- **Phase 1 — Domain**: `FizzBuzzQuery` and `FizzBuzzGenerator`, covered by example-based and property-based (jqwik) tests; domain purity enforced by ArchUnit.
+- **Statement compliance fix**: the domain accepts any integer and any string, as the statement requires (ADR-0005).

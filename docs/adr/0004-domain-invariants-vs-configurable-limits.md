@@ -4,7 +4,7 @@ Date: 2026-10-07
 
 ## Status
 
-Accepted
+Superseded by [ADR-0005](0005-accept-every-input-allowed-by-the-statement.md).
 
 ## Context
 

@@ -1,92 +1,66 @@
 package io.github.benjaminreiprich.fizzbuzz.domain;
 
+import static io.github.benjaminreiprich.fizzbuzz.domain.FizzBuzzQueries.query;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import java.math.BigInteger;
+import java.util.stream.Stream;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class FizzBuzzQueryTest {
 
+    private static final BigInteger THREE = BigInteger.valueOf(3);
+    private static final BigInteger FIVE = BigInteger.valueOf(5);
+    private static final BigInteger FIFTEEN = BigInteger.valueOf(15);
+
+    static Stream<Arguments> constructionsWithANullParameter() {
+        return Stream.of(
+                arguments("int1", (ThrowingCallable) () -> new FizzBuzzQuery(null, FIVE, FIFTEEN, "fizz", "buzz")),
+                arguments("int2", (ThrowingCallable) () -> new FizzBuzzQuery(THREE, null, FIFTEEN, "fizz", "buzz")),
+                arguments("limit", (ThrowingCallable) () -> new FizzBuzzQuery(THREE, FIVE, null, "fizz", "buzz")),
+                arguments("str1", (ThrowingCallable) () -> new FizzBuzzQuery(THREE, FIVE, FIFTEEN, null, "buzz")),
+                arguments("str2", (ThrowingCallable) () -> new FizzBuzzQuery(THREE, FIVE, FIFTEEN, "fizz", null)));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("constructionsWithANullParameter")
+    void should_reject_null_parameter(String parameter, ThrowingCallable construction) {
+        assertThatNullPointerException().isThrownBy(construction).withMessage(parameter + " must not be null");
+    }
+
+    // The statement accepts any integer: zero, negative and beyond the range of int or long.
     @ParameterizedTest
-    @ValueSource(ints = {0, -1, Integer.MIN_VALUE})
-    void should_reject_int1_lower_than_one(int int1) {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new FizzBuzzQuery(int1, 5, 15, "fizz", "buzz"))
-                .withMessage("int1 must be at least 1, but was " + int1);
-    }
+    @ValueSource(strings = {"0", "-3", "2147483648", "-1000000000000000000000000000000"})
+    void should_accept_any_integer(String value) {
+        BigInteger integer = new BigInteger(value);
 
-    @ParameterizedTest
-    @ValueSource(ints = {0, -1, Integer.MIN_VALUE})
-    void should_reject_int2_lower_than_one(int int2) {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new FizzBuzzQuery(3, int2, 15, "fizz", "buzz"))
-                .withMessage("int2 must be at least 1, but was " + int2);
-    }
+        FizzBuzzQuery query = new FizzBuzzQuery(integer, integer, integer, "fizz", "buzz");
 
-    @ParameterizedTest
-    @ValueSource(ints = {0, -1, Integer.MIN_VALUE})
-    void should_reject_limit_lower_than_one(int limit) {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new FizzBuzzQuery(3, 5, limit, "fizz", "buzz"))
-                .withMessage("limit must be at least 1, but was " + limit);
+        assertThat(query.int1()).isEqualTo(integer);
+        assertThat(query.int2()).isEqualTo(integer);
+        assertThat(query.limit()).isEqualTo(integer);
     }
 
     @Test
-    void should_reject_null_str1() {
-        assertThatNullPointerException()
-                .isThrownBy(() -> new FizzBuzzQuery(3, 5, 15, null, "buzz"))
-                .withMessage("str1 must not be null");
-    }
+    void should_accept_empty_strings() {
+        FizzBuzzQuery query = query(3, 5, 15, "", "");
 
-    @Test
-    void should_reject_null_str2() {
-        assertThatNullPointerException()
-                .isThrownBy(() -> new FizzBuzzQuery(3, 5, 15, "fizz", null))
-                .withMessage("str2 must not be null");
-    }
-
-    @Test
-    void should_reject_empty_str1() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new FizzBuzzQuery(3, 5, 15, "", "buzz"))
-                .withMessage("str1 must not be empty");
-    }
-
-    @Test
-    void should_reject_empty_str2() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new FizzBuzzQuery(3, 5, 15, "fizz", ""))
-                .withMessage("str2 must not be empty");
-    }
-
-    @Test
-    void should_accept_smallest_valid_values() {
-        FizzBuzzQuery query = new FizzBuzzQuery(1, 1, 1, "a", "b");
-
-        assertThat(query.int1()).isEqualTo(1);
-        assertThat(query.int2()).isEqualTo(1);
-        assertThat(query.limit()).isEqualTo(1);
-        assertThat(query.str1()).isEqualTo("a");
-        assertThat(query.str2()).isEqualTo("b");
-    }
-
-    // The specification only requires non-empty strings; a space is a legitimate replacement.
-    @Test
-    void should_accept_whitespace_only_strings() {
-        FizzBuzzQuery query = new FizzBuzzQuery(3, 5, 15, " ", " ");
-
-        assertThat(query.str1()).isEqualTo(" ");
-        assertThat(query.str2()).isEqualTo(" ");
+        assertThat(query.str1()).isEmpty();
+        assertThat(query.str2()).isEmpty();
     }
 
     @Test
     void should_be_equal_when_all_parameters_are_equal() {
-        assertThat(new FizzBuzzQuery(3, 5, 15, "fizz", "buzz"))
-                .isEqualTo(new FizzBuzzQuery(3, 5, 15, "fizz", "buzz"))
-                .hasSameHashCodeAs(new FizzBuzzQuery(3, 5, 15, "fizz", "buzz"))
-                .isNotEqualTo(new FizzBuzzQuery(5, 3, 15, "buzz", "fizz"));
+        assertThat(query(3, 5, 15, "fizz", "buzz"))
+                .isEqualTo(new FizzBuzzQuery(new BigInteger("3"), new BigInteger("5"), FIFTEEN, "fizz", "buzz"))
+                .hasSameHashCodeAs(query(3, 5, 15, "fizz", "buzz"))
+                .isNotEqualTo(query(5, 3, 15, "buzz", "fizz"));
     }
 }
