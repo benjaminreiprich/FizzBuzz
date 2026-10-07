@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.benjaminreiprich.fizzbuzz.application.FizzBuzzService;
 import io.github.benjaminreiprich.fizzbuzz.config.FizzBuzzConfiguration;
+import io.github.benjaminreiprich.fizzbuzz.infrastructure.statistics.InMemoryRequestStatistics;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -30,7 +31,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @WebMvcTest(FizzBuzzController.class)
-@Import({FizzBuzzConfiguration.class, FizzBuzzService.class})
+@Import({FizzBuzzConfiguration.class, FizzBuzzService.class, InMemoryRequestStatistics.class})
 class FizzBuzzControllerTest {
 
     private static final String URL = "/api/v1/fizzbuzz";

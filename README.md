@@ -104,14 +104,17 @@ src/main/java/io/github/benjaminreiprich/fizzbuzz/
 │   ├── dto/                         FizzBuzzRequest (query parameters), InvalidParameter
 │   └── validation/                  @DecimalInteger, @MaxLimit, @MaxStringLength
 ├── application/
-│   └── FizzBuzzService.java         use case
+│   ├── FizzBuzzService.java         use case: generate, then count the request
+│   └── port/                        RequestStatistics (interface), RequestHits
 ├── config/
 │   ├── FizzBuzzConfiguration.java   declares the domain beans
 │   ├── OpenApiConfiguration.java    OpenAPI title and description
 │   └── FizzBuzzProperties.java      fizzbuzz.* limits, validated at startup
-└── domain/                          pure Java, no framework dependency
-    ├── FizzBuzzQuery.java           the five parameters: any integers, any strings
-    └── FizzBuzzGenerator.java       FizzBuzzQuery -> List<String>
+├── domain/                          pure Java, no framework dependency
+│   ├── FizzBuzzQuery.java           the five parameters: any integers, any strings
+│   └── FizzBuzzGenerator.java       FizzBuzzQuery -> List<String>
+└── infrastructure/
+    └── statistics/                  InMemoryRequestStatistics, the default RequestStatistics
 ```
 
 Request flow:
@@ -122,12 +125,11 @@ GET /api/v1/fizzbuzz?…
   → FizzBuzzRequest.toQuery()
   → FizzBuzzService.fizzBuzz(query)
   → FizzBuzzGenerator.generate(query)
+  → RequestStatistics.record(query)   only once the sequence is generated
   ← 200 ["1","2","fizz",…]
 ```
 
 **Dependency rule:** `api → application → domain`, `infrastructure → application → domain`, `config` wires everything. Nothing depends on `api`, and `application` never depends on `api` or `infrastructure`. The domain depends only on the JDK, so business rules can be read and tested without Spring. `ArchitectureTest` (ArchUnit) fails the build on any violation.
-
-The `infrastructure` layer is not implemented yet.
 
 ## Design decisions
 
@@ -138,6 +140,7 @@ The `infrastructure` layer is not implemented yet.
 - `GET` with query parameters under `/api/v1`, integers in decimal notation only — [ADR-0006](docs/adr/0006-get-endpoint-with-query-parameters.md)
 - Configurable bounds on `limit` (10 000) and string length (50), the only deviations from the statement — [ADR-0007](docs/adr/0007-operational-limits.md)
 - RFC 9457 Problem Details for every error, rejected values never echoed — [ADR-0008](docs/adr/0008-problem-details-error-responses.md)
+- Statistics kept in memory behind the `RequestStatistics` port, thread-safe without a global lock, exact — [ADR-0009](docs/adr/0009-in-memory-statistics-store.md)
 
 ## Configuration
 
@@ -152,8 +155,9 @@ Invalid values stop the application at startup with an explicit error.
 
 | Kind | Status |
 |---|---|
-| Unit | `FizzBuzzQueryTest` (accepted inputs, equality), `FizzBuzzGeneratorTest` (specification example and edge cases: zero, negative and huge divisors, non-positive limits, empty strings) |
-| Property-based (jqwik) | `FizzBuzzGeneratorPropertiesTest`: each rule of the specification checked on 1,000 random queries |
+| Unit | `FizzBuzzQueryTest` (accepted inputs, equality), `FizzBuzzGeneratorTest` (specification example and edge cases: zero, negative and huge divisors, non-positive limits, empty strings), `InMemoryRequestStatisticsTest` (counting, distinct requests, tie-break), `FizzBuzzServiceTest` (a request is counted only once its sequence is generated) |
+| Property-based (jqwik) | `FizzBuzzGeneratorPropertiesTest`: each rule of the specification checked on 1,000 random queries; `InMemoryRequestStatisticsPropertiesTest`: the most frequent request of any random sequence matches a direct reading of the specification |
+| Concurrency | `InMemoryRequestStatisticsConcurrencyTest`: 8 threads record 240,000 hits at once, repeated 5 times; no hit is lost and the leader is right |
 | Web slice (`@WebMvcTest`) | `FizzBuzzControllerTest` (happy path, every accepted input, every validation rule at its boundary, error body shape, 405), `FizzBuzzControllerConfiguredLimitsTest` (limits come from configuration), `ApiExceptionHandlerTest` (500 leaks nothing) |
 | Configuration | `FizzBuzzPropertiesTest`: defaults, binding, startup failure on invalid limits |
 | Architecture (ArchUnit) | `ArchitectureTest`: the domain depends only on the JDK; layers follow the dependency rule |
@@ -176,6 +180,11 @@ Not implemented yet.
 - Request size is bounded ([Limits](#limits)), so one request cannot exhaust memory.
 - Errors never expose stack traces or exception messages.
 - Swagger UI and `/v3/api-docs` are enabled by default; whether to disable them in production (`springdoc.swagger-ui.enabled=false`, `springdoc.api-docs.enabled=false`) is decided in Phase 4.
+
+Known limitations:
+
+- Statistics are kept in memory: they are lost on restart and not shared between instances. The `RequestStatistics` port exists so that a shared store such as Redis can replace the in-memory one ([ADR-0009](docs/adr/0009-in-memory-statistics-store.md)).
+- The number of distinct requests tracked is unbounded (about 200 bytes each): a client sending millions of different valid requests grows memory. Keeping the answer exact requires it; an approximate algorithm would be a deviation from the statement.
 
 Health probes, metrics, structured logging, Docker image: not implemented yet.
 

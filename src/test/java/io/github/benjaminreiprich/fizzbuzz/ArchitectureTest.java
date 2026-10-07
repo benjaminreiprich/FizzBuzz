@@ -20,7 +20,6 @@ class ArchitectureTest {
             .resideInAnyPackage("java..", "..domain..")
             .because("business rules must stay readable and testable without any framework");
 
-    // Infrastructure is optional until the statistics adapter exists (Phase 3).
     @ArchTest
     static final ArchRule layers_should_follow_the_dependency_rule = layeredArchitecture()
             .consideringOnlyDependenciesInLayers()
@@ -30,7 +29,7 @@ class ArchitectureTest {
             .definedBy("..fizzbuzz.application..")
             .layer("Domain")
             .definedBy("..fizzbuzz.domain..")
-            .optionalLayer("Infrastructure")
+            .layer("Infrastructure")
             .definedBy("..fizzbuzz.infrastructure..")
             .layer("Config")
             .definedBy("..fizzbuzz.config..")

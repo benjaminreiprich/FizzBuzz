@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.github.benjaminreiprich.fizzbuzz.application.FizzBuzzService;
 import io.github.benjaminreiprich.fizzbuzz.config.FizzBuzzConfiguration;
+import io.github.benjaminreiprich.fizzbuzz.infrastructure.statistics.InMemoryRequestStatistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -17,7 +18,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @WebMvcTest(
         controllers = FizzBuzzController.class,
         properties = {"fizzbuzz.max-limit=20", "fizzbuzz.max-string-length=3"})
-@Import({FizzBuzzConfiguration.class, FizzBuzzService.class})
+@Import({FizzBuzzConfiguration.class, FizzBuzzService.class, InMemoryRequestStatistics.class})
 class FizzBuzzControllerConfiguredLimitsTest {
 
     private final MockMvc mockMvc;
