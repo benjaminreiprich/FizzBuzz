@@ -223,6 +223,8 @@ CI (GitHub Actions, `.github/workflows/ci.yml`) runs on every push to `main` and
 1. `./mvnw -B verify` on JDK 25 (tests, formatting, coverage);
 2. then builds the Docker image, starts it and checks that the `HEALTHCHECK` turns healthy, both endpoints answer, the process is not root, every log line is JSON, and `SIGTERM` triggers a graceful shutdown.
 
+GitHub Actions are pinned to commit SHAs, and Dependabot (`.github/dependabot.yml`) opens weekly update pull requests for Maven dependencies, GitHub Actions and the Docker base image; CI runs on each of them.
+
 ## Observability
 
 Operational endpoints are served on a **separate management port (8081)**, so they never reach the public port. Only these are exposed ([ADR-0011](docs/adr/0011-operability.md)):

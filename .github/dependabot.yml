@@ -1,0 +1,25 @@
+# Weekly update pull requests: CI runs on each one before anything is merged.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # One pull request for all minor and patch updates, so that they do not pile up.
+      maven-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # Moving to another Java version is a decision (ADR-0002), not a routine update.
+      - dependency-name: eclipse-temurin
+        update-types: [version-update:semver-major]
