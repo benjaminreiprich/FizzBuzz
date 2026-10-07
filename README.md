@@ -22,6 +22,8 @@ Prerequisite: **JDK 25**. Maven is not needed; the Maven Wrapper downloads the r
 # Try it
 curl "http://localhost:8080/api/v1/fizzbuzz?int1=3&int2=5&limit=15&str1=fizz&str2=buzz"
 
+# Interactive documentation: http://localhost:8080/swagger-ui.html
+
 # Fix formatting violations reported by verify
 ./mvnw spotless:apply
 ```
@@ -29,6 +31,8 @@ curl "http://localhost:8080/api/v1/fizzbuzz?int1=3&int2=5&limit=15&str1=fizz&str
 Run with Docker: Not implemented yet.
 
 ## API
+
+Interactive documentation is served by Swagger UI at `/swagger-ui.html`, and the OpenAPI description at `/v3/api-docs`.
 
 ### `GET /api/v1/fizzbuzz`
 
@@ -103,6 +107,7 @@ src/main/java/io/github/benjaminreiprich/fizzbuzz/
 │   └── FizzBuzzService.java         use case
 ├── config/
 │   ├── FizzBuzzConfiguration.java   declares the domain beans
+│   ├── OpenApiConfiguration.java    OpenAPI title and description
 │   └── FizzBuzzProperties.java      fizzbuzz.* limits, validated at startup
 └── domain/                          pure Java, no framework dependency
     ├── FizzBuzzQuery.java           the five parameters: any integers, any strings
@@ -153,7 +158,7 @@ Invalid values stop the application at startup with an explicit error.
 | Configuration | `FizzBuzzPropertiesTest`: defaults, binding, startup failure on invalid limits |
 | Architecture (ArchUnit) | `ArchitectureTest`: the domain depends only on the JDK |
 | Smoke test (Spring context starts) | `FizzBuzzApplicationTests` |
-| Integration tests | Not implemented yet |
+| Integration (`@SpringBootTest`) | `OpenApiDocumentationTest`: the OpenAPI description documents the endpoint, its five required parameters and its responses; Swagger UI is served |
 
 Everything runs with `./mvnw verify`, which also enforces:
 
@@ -170,6 +175,7 @@ Not implemented yet.
 
 - Request size is bounded ([Limits](#limits)), so one request cannot exhaust memory.
 - Errors never expose stack traces or exception messages.
+- Swagger UI and `/v3/api-docs` are enabled by default; whether to disable them in production (`springdoc.swagger-ui.enabled=false`, `springdoc.api-docs.enabled=false`) is decided in Phase 4.
 
 Health probes, metrics, structured logging, Docker image: not implemented yet.
 
@@ -178,4 +184,4 @@ Health probes, metrics, structured logging, Docker image: not implemented yet.
 - **Phase 0 — Bootstrap**: Spring Boot 4.1.1 / Java 25 project with Maven Wrapper, Spotless and JaCoCo gates, smoke test, GitHub Actions CI, first ADRs.
 - **Phase 1 — Domain**: `FizzBuzzQuery` and `FizzBuzzGenerator`, covered by example-based and property-based (jqwik) tests; domain purity enforced by ArchUnit.
 - **Statement compliance fix**: the domain accepts any integer and any string, as the statement requires (ADR-0005).
-- **Phase 2 — FizzBuzz endpoint**: `GET /api/v1/fizzbuzz` with validated parameters, configurable limits and Problem Details errors.
+- **Phase 2 — FizzBuzz endpoint**: `GET /api/v1/fizzbuzz` with validated parameters, configurable limits, Problem Details errors and OpenAPI / Swagger UI documentation.

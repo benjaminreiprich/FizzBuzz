@@ -40,6 +40,7 @@
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
         <jqwik.version>1.10.1</jqwik.version>
         <archunit.version>1.5.1</archunit.version>
+        <springdoc-openapi.version>3.1.1</springdoc-openapi.version>
         <coverage.line.minimum>0.90</coverage.line.minimum>
         <!-- Default so that @{argLine} resolves even when no plugin (e.g. JaCoCo) contributes to it. -->
         <argLine/>
@@ -54,6 +55,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc-openapi.version}</version>
         </dependency>
 
         <dependency>
