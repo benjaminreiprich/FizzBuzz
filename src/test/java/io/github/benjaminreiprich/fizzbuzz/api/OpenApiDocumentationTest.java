@@ -39,6 +39,16 @@ class OpenApiDocumentationTest {
     }
 
     @Test
+    void should_document_the_statistics_endpoint_without_parameters() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.paths['/api/v1/statistics'].get.parameters").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/v1/statistics'].get.responses['200']")
+                        .exists());
+    }
+
+    @Test
     void should_serve_swagger_ui() throws Exception {
         mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
     }

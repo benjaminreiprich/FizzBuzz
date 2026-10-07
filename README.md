@@ -4,9 +4,9 @@
 
 ## Overview
 
-A Spring Boot web service exposing a configurable FizzBuzz: given three integers `int1`, `int2`, `limit` and two strings `str1`, `str2`, it returns the numbers from 1 to `limit`, where multiples of `int1` are replaced by `str1`, multiples of `int2` by `str2`, and multiples of both by `str1str2`.
+A Spring Boot web service exposing a configurable FizzBuzz: given three integers `int1`, `int2`, `limit` and two strings `str1`, `str2`, it returns the numbers from 1 to `limit`, where multiples of `int1` are replaced by `str1`, multiples of `int2` by `str2`, and multiples of both by `str1str2`. A statistics endpoint reports the most frequent request and its number of hits.
 
-**Current state:** the FizzBuzz endpoint is available. The statistics endpoint is not implemented yet.
+**Current state:** both endpoints are available.
 
 ## Quick start
 
@@ -21,6 +21,7 @@ Prerequisite: **JDK 25**. Maven is not needed; the Maven Wrapper downloads the r
 
 # Try it
 curl "http://localhost:8080/api/v1/fizzbuzz?int1=3&int2=5&limit=15&str1=fizz&str2=buzz"
+curl "http://localhost:8080/api/v1/statistics"
 
 # Interactive documentation: http://localhost:8080/swagger-ui.html
 
@@ -53,6 +54,27 @@ curl "http://localhost:8080/api/v1/fizzbuzz?int1=3&int2=5&limit=15&str1=fizz&str
 ```json
 ["1","2","fizz","4","buzz","fizz","7","8","fizz","buzz","11","fizz","13","14","fizzbuzz"]
 ```
+
+### `GET /api/v1/statistics`
+
+Takes no parameter (any parameter sent is ignored) and returns the most frequent FizzBuzz request and its number of hits:
+
+```bash
+curl "http://localhost:8080/api/v1/statistics"
+```
+
+```json
+{"request": {"int1": 3, "int2": 5, "limit": 15, "str1": "fizz", "str2": "buzz"}, "hits": 42}
+```
+
+| Rule | Behaviour |
+|---|---|
+| Before any request | `200 {"request": null, "hits": 0}`: same shape, zero hits |
+| What counts | Only valid requests (`200`); rejected requests (`400`) are not counted |
+| Same request | All five parameters equal; integers compared as numbers (`05` and `5` are the same, reported as `5`), strings exactly. `(3, 5, fizz, buzz)` and `(5, 3, buzz, fizz)` are different requests |
+| Tie | The request that reached the highest count first wins |
+
+Rationale in [ADR-0010](docs/adr/0010-statistics-semantics.md). Statistics are kept in memory: see [Production considerations](#production-considerations).
 
 ### Errors
 
@@ -100,11 +122,13 @@ src/main/java/io/github/benjaminreiprich/fizzbuzz/
 ├── FizzBuzzApplication.java         Spring Boot entry point
 ├── api/                             HTTP adapter: controllers, DTOs, validation, error handling
 │   ├── FizzBuzzController.java
+│   ├── StatisticsController.java
 │   ├── ApiExceptionHandler.java     RFC 9457 Problem Details
-│   ├── dto/                         FizzBuzzRequest (query parameters), InvalidParameter
+│   ├── dto/                         FizzBuzzRequest, InvalidParameter, StatisticsResponse, RequestParameters
 │   └── validation/                  @DecimalInteger, @MaxLimit, @MaxStringLength
 ├── application/
 │   ├── FizzBuzzService.java         use case: generate, then count the request
+│   ├── StatisticsService.java       use case: most frequent request
 │   └── port/                        RequestStatistics (interface), RequestHits
 ├── config/
 │   ├── FizzBuzzConfiguration.java   declares the domain beans
@@ -129,6 +153,12 @@ GET /api/v1/fizzbuzz?…
   ← 200 ["1","2","fizz",…]
 ```
 
+```
+GET /api/v1/statistics
+  → StatisticsController → StatisticsService → RequestStatistics.mostFrequent()   O(1)
+  ← 200 {"request": {…}, "hits": n}
+```
+
 **Dependency rule:** `api → application → domain`, `infrastructure → application → domain`, `config` wires everything. Nothing depends on `api`, and `application` never depends on `api` or `infrastructure`. The domain depends only on the JDK, so business rules can be read and tested without Spring. `ArchitectureTest` (ArchUnit) fails the build on any violation.
 
 ## Design decisions
@@ -141,6 +171,7 @@ GET /api/v1/fizzbuzz?…
 - Configurable bounds on `limit` (10 000) and string length (50), the only deviations from the statement — [ADR-0007](docs/adr/0007-operational-limits.md)
 - RFC 9457 Problem Details for every error, rejected values never echoed — [ADR-0008](docs/adr/0008-problem-details-error-responses.md)
 - Statistics kept in memory behind the `RequestStatistics` port, thread-safe without a global lock, exact — [ADR-0009](docs/adr/0009-in-memory-statistics-store.md)
+- Statistics semantics: zero hits before any request, only valid requests counted, parameters compared as values, first to reach a count wins ties — [ADR-0010](docs/adr/0010-statistics-semantics.md)
 
 ## Configuration
 
@@ -158,11 +189,11 @@ Invalid values stop the application at startup with an explicit error.
 | Unit | `FizzBuzzQueryTest` (accepted inputs, equality), `FizzBuzzGeneratorTest` (specification example and edge cases: zero, negative and huge divisors, non-positive limits, empty strings), `InMemoryRequestStatisticsTest` (counting, distinct requests, tie-break), `FizzBuzzServiceTest` (a request is counted only once its sequence is generated) |
 | Property-based (jqwik) | `FizzBuzzGeneratorPropertiesTest`: each rule of the specification checked on 1,000 random queries; `InMemoryRequestStatisticsPropertiesTest`: the most frequent request of any random sequence matches a direct reading of the specification |
 | Concurrency | `InMemoryRequestStatisticsConcurrencyTest`: 8 threads record 240,000 hits at once, repeated 5 times; no hit is lost and the leader is right |
-| Web slice (`@WebMvcTest`) | `FizzBuzzControllerTest` (happy path, every accepted input, every validation rule at its boundary, error body shape, 405), `FizzBuzzControllerConfiguredLimitsTest` (limits come from configuration), `ApiExceptionHandlerTest` (500 leaks nothing) |
+| Web slice (`@WebMvcTest`) | `FizzBuzzControllerTest` (happy path, every accepted input, every validation rule at its boundary, error body shape, 405), `FizzBuzzControllerConfiguredLimitsTest` (limits come from configuration), `ApiExceptionHandlerTest` (500 leaks nothing), `StatisticsControllerTest` (response shape, empty state, integers of any size, ignored parameters) |
 | Configuration | `FizzBuzzPropertiesTest`: defaults, binding, startup failure on invalid limits |
 | Architecture (ArchUnit) | `ArchitectureTest`: the domain depends only on the JDK; layers follow the dependency rule |
 | Smoke test (Spring context starts) | `FizzBuzzApplicationTests` |
-| Integration (`@SpringBootTest`) | `OpenApiDocumentationTest`: the OpenAPI description documents the endpoint, its five required parameters and its responses; Swagger UI is served |
+| Integration (`@SpringBootTest`) | `OpenApiDocumentationTest`: the OpenAPI description documents the endpoint, its five required parameters and its responses; Swagger UI is served; `StatisticsIntegrationTest`: both endpoints end to end, rejected requests not counted, `05` and `5` counted together |
 
 Everything runs with `./mvnw verify`, which also enforces:
 
@@ -194,3 +225,4 @@ Health probes, metrics, structured logging, Docker image: not implemented yet.
 - **Phase 1 — Domain**: `FizzBuzzQuery` and `FizzBuzzGenerator`, covered by example-based and property-based (jqwik) tests; domain purity enforced by ArchUnit.
 - **Statement compliance fix**: the domain accepts any integer and any string, as the statement requires (ADR-0005).
 - **Phase 2 — FizzBuzz endpoint**: `GET /api/v1/fizzbuzz` with validated parameters, configurable limits, Problem Details errors and OpenAPI / Swagger UI documentation.
+- **Phase 3 — Statistics**: `GET /api/v1/statistics` backed by a thread-safe in-memory store behind the `RequestStatistics` port.
