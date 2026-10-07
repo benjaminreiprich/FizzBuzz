@@ -1,0 +1,13 @@
+# Only what the build needs (pom.xml, Maven Wrapper, src/) goes into the build context.
+target/
+.git/
+.github/
+.idea/
+.vscode/
+*.iml
+.claude/
+CLAUDE.md
+NOTES.md
+.jqwik-database
+docs/
+README.md

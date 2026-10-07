@@ -29,7 +29,16 @@ curl "http://localhost:8080/api/v1/statistics"
 ./mvnw spotless:apply
 ```
 
-Run with Docker: Not implemented yet.
+Run with Docker (no JDK needed):
+
+```bash
+docker build -t fizzbuzz-api .
+docker run --rm -p 8080:8080 -p 8081:8081 fizzbuzz-api
+```
+
+Port 8080 serves the API, port 8081 the health probes and metrics ([Observability](#observability)). Logs are JSON inside the container.
+
+On Windows, if `git clone` fails with *Filename too long*, clone into a shorter path or enable long paths: `git config --global core.longpaths true`.
 
 ## API
 
@@ -173,6 +182,7 @@ GET /api/v1/statistics
 - Statistics kept in memory behind the `RequestStatistics` port, thread-safe without a global lock, exact — [ADR-0009](docs/adr/0009-in-memory-statistics-store.md)
 - Statistics semantics: zero hits before any request, only valid requests counted, parameters compared as values, first to reach a count wins ties — [ADR-0010](docs/adr/0010-statistics-semantics.md)
 - Probes and Prometheus metrics on a separate management port, JSON logs, graceful shutdown, Swagger kept in production — [ADR-0011](docs/adr/0011-operability.md)
+- Multi-stage Docker image: JRE only, non-root, layered jar, health check — [ADR-0012](docs/adr/0012-container-image.md)
 
 ## Configuration
 
@@ -231,14 +241,13 @@ curl http://localhost:8081/actuator/prometheus
 - Errors never expose stack traces or exception messages.
 - Health probes and Prometheus metrics on an internal port; every other Actuator endpoint is closed ([Observability](#observability)).
 - Graceful shutdown: on stop, in-flight requests get up to 30 s to complete before the server exits.
+- Docker image: JRE-only runtime, non-root user, layered jar for small rebuilds, `HEALTHCHECK` on the liveness probe, heap sized to 75% of the container memory ([ADR-0012](docs/adr/0012-container-image.md)).
 - Swagger UI and `/v3/api-docs` stay enabled in production on purpose: the API is public and read-only. Disable them with `SPRINGDOC_SWAGGER_UI_ENABLED=false` and `SPRINGDOC_API_DOCS_ENABLED=false`.
 
 Known limitations:
 
 - Statistics are kept in memory: they are lost on restart and not shared between instances. The `RequestStatistics` port exists so that a shared store such as Redis can replace the in-memory one ([ADR-0009](docs/adr/0009-in-memory-statistics-store.md)).
 - The number of distinct requests tracked is unbounded (about 200 bytes each): a client sending millions of different valid requests grows memory. Keeping the answer exact requires it; an approximate algorithm would be a deviation from the statement.
-
-Docker image: not implemented yet.
 
 ## Project history
 
