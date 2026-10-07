@@ -1,5 +1,6 @@
 package io.github.benjaminreiprich.fizzbuzz.domain;
 
+import static io.github.benjaminreiprich.fizzbuzz.domain.FizzBuzzQueries.query;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigInteger;
@@ -10,13 +11,12 @@ import net.jqwik.api.Combinators;
 import net.jqwik.api.ForAll;
 import net.jqwik.api.Property;
 import net.jqwik.api.Provide;
-import net.jqwik.api.Tuple;
 
 /**
- * Checks the specification's rules on randomly generated queries rather than hand-picked examples.
+ * Checks the specification's rules on 1,000 random queries per property, rather than on hand-picked examples.
  *
- * <p>Divisibility is computed here with {@link BigInteger} arithmetic, independently of the generator's
- * implementation.
+ * <p>The expected result is computed here with plain {@code int} arithmetic, independently of the generator, which
+ * works with {@code BigInteger}. Very large divisors are covered by the examples in {@link FizzBuzzGeneratorTest}.
  */
 class FizzBuzzGeneratorPropertiesTest {
 
@@ -24,7 +24,8 @@ class FizzBuzzGeneratorPropertiesTest {
 
     @Property
     void should_return_one_term_per_number_from_1_to_limit(@ForAll("queries") FizzBuzzQuery query) {
-        int expectedSize = query.limit().signum() > 0 ? query.limit().intValueExact() : 0;
+        int limit = query.limit().intValue();
+        int expectedSize = Math.max(limit, 0);
 
         assertThat(generator.generate(query)).hasSize(expectedSize);
     }
@@ -73,24 +74,24 @@ class FizzBuzzGeneratorPropertiesTest {
         }
     }
 
-    // Mostly small divisors (zero and negatives included), so that every kind of term shows up; any int
-    // and far beyond, since the statement accepts any integer. Limits include non-positive values.
+    // Random queries: divisors from -30 to 30 (zero and negatives included) so that every kind of term shows up,
+    // limits from -50 to 500 (non-positive limits included), and letters-only strings of 0 to 10 characters.
+    // Combinators.combine draws one value from each source and passes the five of them to query(...).
     @Provide
     Arbitrary<FizzBuzzQuery> queries() {
-        BigInteger tenToThe40 = BigInteger.TEN.pow(40);
-        Arbitrary<BigInteger> smallDivisors =
-                Arbitraries.integers().between(-30, 30).map(BigInteger::valueOf);
-        Arbitrary<BigInteger> intDivisors = Arbitraries.integers().map(BigInteger::valueOf);
-        Arbitrary<BigInteger> hugeDivisors = Arbitraries.bigIntegers().between(tenToThe40.negate(), tenToThe40);
-        Arbitrary<BigInteger> divisors = Arbitraries.frequencyOf(
-                Tuple.of(8, smallDivisors), Tuple.of(1, intDivisors), Tuple.of(1, hugeDivisors));
-        Arbitrary<BigInteger> limits = Arbitraries.integers().between(-50, 500).map(BigInteger::valueOf);
-        Arbitrary<String> words = Arbitraries.strings().alpha().ofMinLength(0).ofMaxLength(10);
-        return Combinators.combine(divisors, divisors, limits, words, words).as(FizzBuzzQuery::new);
+        Arbitrary<Integer> divisors = Arbitraries.integers().between(-30, 30);
+        Arbitrary<Integer> limits = Arbitraries.integers().between(-50, 500);
+        Arbitrary<String> words = Arbitraries.strings().alpha().ofMaxLength(10);
+        return Combinators.combine(divisors, divisors, limits, words, words)
+                .as((int1, int2, limit, str1, str2) -> query(int1, int2, limit, str1, str2));
     }
 
-    // Only 0 is a multiple of 0, and n is never 0 here.
+    // The only multiple of 0 is 0, and n is never 0 here.
     private static boolean isMultiple(int n, BigInteger divisor) {
-        return divisor.signum() != 0 && BigInteger.valueOf(n).remainder(divisor).signum() == 0;
+        int intDivisor = divisor.intValue();
+        if (intDivisor == 0) {
+            return false;
+        }
+        return n % intDivisor == 0;
     }
 }

@@ -107,6 +107,8 @@ class FizzBuzzControllerTest {
         expectSingleError(perform(parameters), parameter, "is required");
     }
 
+    // In @CsvSource, single quotes keep a value exactly as written: ' 5' is "5" preceded by a space, '' is an empty
+    // string.
     @ParameterizedTest(name = "{0}={1}")
     @CsvSource({
         "int1, abc",

@@ -3,15 +3,10 @@ package io.github.benjaminreiprich.fizzbuzz.domain;
 import static io.github.benjaminreiprich.fizzbuzz.domain.FizzBuzzQueries.query;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.math.BigInteger;
-import java.util.stream.Stream;
-import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class FizzBuzzQueryTest {
@@ -20,19 +15,39 @@ class FizzBuzzQueryTest {
     private static final BigInteger FIVE = BigInteger.valueOf(5);
     private static final BigInteger FIFTEEN = BigInteger.valueOf(15);
 
-    static Stream<Arguments> constructionsWithANullParameter() {
-        return Stream.of(
-                arguments("int1", (ThrowingCallable) () -> new FizzBuzzQuery(null, FIVE, FIFTEEN, "fizz", "buzz")),
-                arguments("int2", (ThrowingCallable) () -> new FizzBuzzQuery(THREE, null, FIFTEEN, "fizz", "buzz")),
-                arguments("limit", (ThrowingCallable) () -> new FizzBuzzQuery(THREE, FIVE, null, "fizz", "buzz")),
-                arguments("str1", (ThrowingCallable) () -> new FizzBuzzQuery(THREE, FIVE, FIFTEEN, null, "buzz")),
-                arguments("str2", (ThrowingCallable) () -> new FizzBuzzQuery(THREE, FIVE, FIFTEEN, "fizz", null)));
+    @Test
+    void should_reject_null_int1() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> new FizzBuzzQuery(null, FIVE, FIFTEEN, "fizz", "buzz"))
+                .withMessage("int1 must not be null");
     }
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("constructionsWithANullParameter")
-    void should_reject_null_parameter(String parameter, ThrowingCallable construction) {
-        assertThatNullPointerException().isThrownBy(construction).withMessage(parameter + " must not be null");
+    @Test
+    void should_reject_null_int2() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> new FizzBuzzQuery(THREE, null, FIFTEEN, "fizz", "buzz"))
+                .withMessage("int2 must not be null");
+    }
+
+    @Test
+    void should_reject_null_limit() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> new FizzBuzzQuery(THREE, FIVE, null, "fizz", "buzz"))
+                .withMessage("limit must not be null");
+    }
+
+    @Test
+    void should_reject_null_str1() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> new FizzBuzzQuery(THREE, FIVE, FIFTEEN, null, "buzz"))
+                .withMessage("str1 must not be null");
+    }
+
+    @Test
+    void should_reject_null_str2() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> new FizzBuzzQuery(THREE, FIVE, FIFTEEN, "fizz", null))
+                .withMessage("str2 must not be null");
     }
 
     // The statement accepts any integer: zero, negative and beyond the range of int or long.

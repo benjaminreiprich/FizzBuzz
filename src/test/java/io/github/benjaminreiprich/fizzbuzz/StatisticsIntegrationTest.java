@@ -49,11 +49,16 @@ class StatisticsIntegrationTest {
             fizzBuzz("5", "3", "abc", "buzz", "fizz", status().isBadRequest());
         }
 
+        // The first request was sent 3 times (as 3/5, +3/05 and 003/+5) and is reported in canonical form.
+        String expectedJson = """
+                {
+                  "request": {"int1": 3, "int2": 5, "limit": 15, "str1": "fizz", "str2": "buzz"},
+                  "hits": 3
+                }
+                """;
         mockMvc.perform(get("/api/v1/statistics"))
                 .andExpect(status().isOk())
-                .andExpect(content().json("""
-                                {"request": {"int1": 3, "int2": 5, "limit": 15, "str1": "fizz", "str2": "buzz"},\
-                                 "hits": 3}""", JsonCompareMode.STRICT));
+                .andExpect(content().json(expectedJson, JsonCompareMode.STRICT));
     }
 
     private void fizzBuzz(String int1, String int2, String limit, String str1, String str2, ResultMatcher expected)

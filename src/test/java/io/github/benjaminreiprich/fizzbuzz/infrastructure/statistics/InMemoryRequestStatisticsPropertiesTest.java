@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.benjaminreiprich.fizzbuzz.application.port.RequestHits;
 import io.github.benjaminreiprich.fizzbuzz.domain.FizzBuzzQuery;
 import java.math.BigInteger;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,36 +26,53 @@ class InMemoryRequestStatisticsPropertiesTest {
             @ForAll("requestSequences") List<FizzBuzzQuery> requests) {
         InMemoryRequestStatistics statistics = new InMemoryRequestStatistics();
 
-        requests.forEach(statistics::record);
+        for (FizzBuzzQuery request : requests) {
+            statistics.record(request);
+        }
 
         assertThat(statistics.mostFrequent()).isEqualTo(expectedMostFrequent(requests));
     }
 
     private static Optional<RequestHits> expectedMostFrequent(List<FizzBuzzQuery> requests) {
-        Map<FizzBuzzQuery, Long> totals = new HashMap<>();
-        requests.forEach(request -> totals.merge(request, 1L, Long::sum));
-        if (totals.isEmpty()) {
+        if (requests.isEmpty()) {
             return Optional.empty();
         }
-        long highest = Collections.max(totals.values());
 
-        // The winner is the first request whose running count reaches the highest total.
-        Map<FizzBuzzQuery, Long> running = new HashMap<>();
+        // Step 1: count how many times each request appears in the whole sequence.
+        Map<FizzBuzzQuery, Long> totals = new HashMap<>();
         for (FizzBuzzQuery request : requests) {
-            if (running.merge(request, 1L, Long::sum) == highest) {
-                return Optional.of(new RequestHits(request, highest));
+            totals.put(request, totals.getOrDefault(request, 0L) + 1);
+        }
+
+        // Step 2: find the highest of these counts.
+        long highestTotal = 0;
+        for (long total : totals.values()) {
+            if (total > highestTotal) {
+                highestTotal = total;
             }
         }
-        throw new AssertionError("unreachable: some request reaches the highest total");
+
+        // Step 3: replay the sequence; the winner is the first request whose count reaches the highest total.
+        Map<FizzBuzzQuery, Long> countsSoFar = new HashMap<>();
+        for (FizzBuzzQuery request : requests) {
+            long countSoFar = countsSoFar.getOrDefault(request, 0L) + 1;
+            countsSoFar.put(request, countSoFar);
+            if (countSoFar == highestTotal) {
+                return Optional.of(new RequestHits(request, highestTotal));
+            }
+        }
+        throw new AssertionError("unreachable: some request always reaches the highest total");
     }
 
-    // A small pool of distinct requests, so that sequences contain many repeats and ties.
+    // Sequences of up to 200 requests picked among only 4 distinct ones, so that repeats and ties are frequent.
     @Provide
     Arbitrary<List<FizzBuzzQuery>> requestSequences() {
-        Arbitrary<FizzBuzzQuery> requests = Arbitraries.integers()
-                .between(1, 4)
-                .map(int1 ->
-                        new FizzBuzzQuery(BigInteger.valueOf(int1), BigInteger.TWO, BigInteger.TEN, "fizz", "buzz"));
+        Arbitrary<FizzBuzzQuery> requests =
+                Arbitraries.integers().between(1, 4).map(InMemoryRequestStatisticsPropertiesTest::requestNumber);
         return requests.list().ofMaxSize(200);
+    }
+
+    private static FizzBuzzQuery requestNumber(int number) {
+        return new FizzBuzzQuery(BigInteger.valueOf(number), BigInteger.TWO, BigInteger.TEN, "fizz", "buzz");
     }
 }

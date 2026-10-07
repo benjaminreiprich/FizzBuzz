@@ -53,9 +53,15 @@ class StatisticsControllerTest {
         given(statisticsService.mostFrequentRequest())
                 .willReturn(Optional.of(new RequestHits(query(3, 5, 15, "fizz", "buzz"), 42)));
 
-        mockMvc.perform(get(URL)).andExpect(status().isOk()).andExpect(content().json("""
-                                {"request": {"int1": 3, "int2": 5, "limit": 15, "str1": "fizz", "str2": "buzz"},\
-                                 "hits": 42}""", JsonCompareMode.STRICT));
+        String expectedJson = """
+                {
+                  "request": {"int1": 3, "int2": 5, "limit": 15, "str1": "fizz", "str2": "buzz"},
+                  "hits": 42
+                }
+                """;
+        mockMvc.perform(get(URL))
+                .andExpect(status().isOk())
+                .andExpect(content().json(expectedJson, JsonCompareMode.STRICT));
     }
 
     // Statistics change with every FizzBuzz request: a cached copy would be stale (ADR-0013).
