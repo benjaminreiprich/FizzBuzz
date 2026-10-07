@@ -125,7 +125,7 @@ GET /api/v1/fizzbuzz?…
   ← 200 ["1","2","fizz",…]
 ```
 
-**Dependency rule:** `api → application → domain`; the domain depends only on the JDK, so business rules can be read and tested without Spring. `ArchitectureTest` (ArchUnit) fails the build if a domain class depends on anything else.
+**Dependency rule:** `api → application → domain`, `infrastructure → application → domain`, `config` wires everything. Nothing depends on `api`, and `application` never depends on `api` or `infrastructure`. The domain depends only on the JDK, so business rules can be read and tested without Spring. `ArchitectureTest` (ArchUnit) fails the build on any violation.
 
 The `infrastructure` layer is not implemented yet.
 
@@ -156,7 +156,7 @@ Invalid values stop the application at startup with an explicit error.
 | Property-based (jqwik) | `FizzBuzzGeneratorPropertiesTest`: each rule of the specification checked on 1,000 random queries |
 | Web slice (`@WebMvcTest`) | `FizzBuzzControllerTest` (happy path, every accepted input, every validation rule at its boundary, error body shape, 405), `FizzBuzzControllerConfiguredLimitsTest` (limits come from configuration), `ApiExceptionHandlerTest` (500 leaks nothing) |
 | Configuration | `FizzBuzzPropertiesTest`: defaults, binding, startup failure on invalid limits |
-| Architecture (ArchUnit) | `ArchitectureTest`: the domain depends only on the JDK |
+| Architecture (ArchUnit) | `ArchitectureTest`: the domain depends only on the JDK; layers follow the dependency rule |
 | Smoke test (Spring context starts) | `FizzBuzzApplicationTests` |
 | Integration (`@SpringBootTest`) | `OpenApiDocumentationTest`: the OpenAPI description documents the endpoint, its five required parameters and its responses; Swagger UI is served |
 
