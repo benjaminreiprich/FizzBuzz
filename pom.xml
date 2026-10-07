@@ -42,7 +42,8 @@
         <archunit.version>1.5.1</archunit.version>
         <springdoc-openapi.version>3.1.1</springdoc-openapi.version>
         <coverage.line.minimum>0.90</coverage.line.minimum>
-        <!-- Default so that @{argLine} resolves even when no plugin (e.g. JaCoCo) contributes to it. -->
+        <!-- JVM options for the test JVM. Empty by default; JaCoCo adds its agent to it at build time (see Surefire
+             below). Declaring it here avoids a build error when JaCoCo is skipped and adds nothing. -->
         <argLine/>
     </properties>
 
@@ -117,7 +118,8 @@
                 </executions>
             </plugin>
 
-            <!-- Exposes the Mockito jar path as a property, used below to load Mockito as a Java agent. -->
+            <!-- Mockito as a Java agent, step 1 of 2: the "properties" goal creates one Maven property per dependency,
+                 holding the path of its jar. We use org.mockito:mockito-core:jar in step 2 (Surefire, below). -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -134,9 +136,13 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <!-- Recent JDKs warn about (and will eventually block) agents attached at runtime,
-                         which is what Mockito does by default. -Xshare:off silences the class-data-sharing
-                         warning the agent triggers; it only affects the test JVM. -->
+                    <!-- Mockito as a Java agent, step 2 of 2. Why: by default Mockito attaches itself to the JVM while
+                         tests run; recent JDKs warn about this and will eventually forbid it. Loading it at startup
+                         with -javaagent is the documented fix.
+                         - @{argLine}: what JaCoCo put in argLine for coverage. @{...} (not ${...}) is read when the
+                           tests start, after JaCoCo has run; ${argLine} would be read too early and lose coverage.
+                         - -javaagent:${org.mockito:mockito-core:jar}: the Mockito jar path from step 1.
+                         - -Xshare:off: silences a JVM warning that loading an agent triggers. Test JVM only. -->
                     <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
                 </configuration>
             </plugin>
