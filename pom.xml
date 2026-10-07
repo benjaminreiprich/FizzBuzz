@@ -12,7 +12,7 @@
 
     <groupId>io.github.benjaminreiprich</groupId>
     <artifactId>fizzbuzz-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>fizzbuzz-api</name>
     <description>FizzBuzz REST API</description>
 

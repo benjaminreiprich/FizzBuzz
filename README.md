@@ -290,3 +290,4 @@ What I'd do next with more time:
 - **Phase 2 — FizzBuzz endpoint**: `GET /api/v1/fizzbuzz` with validated parameters, configurable limits, Problem Details errors and OpenAPI / Swagger UI documentation.
 - **Phase 3 — Statistics**: `GET /api/v1/statistics` backed by a thread-safe in-memory store behind the `RequestStatistics` port.
 - **Phase 4 — Production readiness**: health probes and Prometheus metrics on a separate management port, JSON logs, graceful shutdown, Docker image built and smoke-tested in CI.
+- **Phase 6 — Final review**: responses made non-cacheable so that every request is counted, GitHub Actions pinned to SHAs with Dependabot, README reviewed from a newcomer's point of view. Released as **1.0.0**.
