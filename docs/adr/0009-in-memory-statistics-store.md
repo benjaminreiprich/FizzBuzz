@@ -4,7 +4,7 @@ Date: 2026-10-07
 
 ## Status
 
-Accepted
+Accepted. Its concurrency design (lock-free counters and compare-and-set) is superseded by [ADR-0014](0014-simple-synchronized-statistics-store.md); the port and the limitations below still apply.
 
 ## Context
 
