@@ -172,6 +172,7 @@ GET /api/v1/statistics
 - RFC 9457 Problem Details for every error, rejected values never echoed — [ADR-0008](docs/adr/0008-problem-details-error-responses.md)
 - Statistics kept in memory behind the `RequestStatistics` port, thread-safe without a global lock, exact — [ADR-0009](docs/adr/0009-in-memory-statistics-store.md)
 - Statistics semantics: zero hits before any request, only valid requests counted, parameters compared as values, first to reach a count wins ties — [ADR-0010](docs/adr/0010-statistics-semantics.md)
+- Probes and Prometheus metrics on a separate management port, JSON logs, graceful shutdown, Swagger kept in production — [ADR-0011](docs/adr/0011-operability.md)
 
 ## Configuration
 
@@ -179,6 +180,10 @@ GET /api/v1/statistics
 |---|---|---|---|
 | `fizzbuzz.max-limit` | `FIZZBUZZ_MAX_LIMIT` | `10000` | Highest accepted `limit`; must be at least 1 |
 | `fizzbuzz.max-string-length` | `FIZZBUZZ_MAX_STRING_LENGTH` | `50` | Highest accepted length of `str1` and `str2`, in characters; must be at least 1 |
+| `management.server.port` | `MANAGEMENT_SERVER_PORT` | `8081` | Port of the health probes and Prometheus metrics; keep it internal |
+| `logging.structured.format.console` | `LOGGING_STRUCTURED_FORMAT_CONSOLE` | *(unset: plain text)* | `ecs` for JSON logs |
+| `springdoc.swagger-ui.enabled` | `SPRINGDOC_SWAGGER_UI_ENABLED` | `true` | Serve Swagger UI |
+| `springdoc.api-docs.enabled` | `SPRINGDOC_API_DOCS_ENABLED` | `true` | Serve the OpenAPI description |
 
 Invalid values stop the application at startup with an explicit error.
 
@@ -193,7 +198,7 @@ Invalid values stop the application at startup with an explicit error.
 | Configuration | `FizzBuzzPropertiesTest`: defaults, binding, startup failure on invalid limits |
 | Architecture (ArchUnit) | `ArchitectureTest`: the domain depends only on the JDK; layers follow the dependency rule |
 | Smoke test (Spring context starts) | `FizzBuzzApplicationTests` |
-| Integration (`@SpringBootTest`) | `OpenApiDocumentationTest`: the OpenAPI description documents the endpoint, its five required parameters and its responses; Swagger UI is served; `StatisticsIntegrationTest`: both endpoints end to end, rejected requests not counted, `05` and `5` counted together |
+| Integration (`@SpringBootTest`) | `OpenApiDocumentationTest`: the OpenAPI description documents the endpoint, its five required parameters and its responses; Swagger UI is served; `StatisticsIntegrationTest`: both endpoints end to end, rejected requests not counted, `05` and `5` counted together; `ActuatorEndpointsTest`: probes are UP, request metrics are exported, every other Actuator endpoint is closed, nothing is exposed on the public port |
 
 Everything runs with `./mvnw verify`, which also enforces:
 
@@ -204,20 +209,36 @@ CI (GitHub Actions, `.github/workflows/ci.yml`) runs `./mvnw -B verify` on JDK 2
 
 ## Observability
 
-Not implemented yet.
+Operational endpoints are served on a **separate management port (8081)**, so they never reach the public port. Only these are exposed ([ADR-0011](docs/adr/0011-operability.md)):
+
+| Endpoint (port 8081) | Purpose |
+|---|---|
+| `/actuator/health` | Overall status (`UP` / `DOWN`), details hidden |
+| `/actuator/health/liveness` | Liveness probe: restart the instance if it fails |
+| `/actuator/health/readiness` | Readiness probe: stop routing traffic to the instance while it fails |
+| `/actuator/prometheus` | Metrics in Prometheus format: `http_server_requests_seconds` per endpoint and status, JVM memory and GC, Tomcat threads |
+
+```bash
+curl http://localhost:8081/actuator/health
+curl http://localhost:8081/actuator/prometheus
+```
+
+**Logging**: plain text by default; JSON in [Elastic Common Schema](https://www.elastic.co/guide/en/ecs/current/index.html) with `LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs`, so that a log collector can index every field. Unexpected errors are logged with their stack trace, never returned to clients.
 
 ## Production considerations
 
 - Request size is bounded ([Limits](#limits)), so one request cannot exhaust memory.
 - Errors never expose stack traces or exception messages.
-- Swagger UI and `/v3/api-docs` are enabled by default; whether to disable them in production (`springdoc.swagger-ui.enabled=false`, `springdoc.api-docs.enabled=false`) is decided in Phase 4.
+- Health probes and Prometheus metrics on an internal port; every other Actuator endpoint is closed ([Observability](#observability)).
+- Graceful shutdown: on stop, in-flight requests get up to 30 s to complete before the server exits.
+- Swagger UI and `/v3/api-docs` stay enabled in production on purpose: the API is public and read-only. Disable them with `SPRINGDOC_SWAGGER_UI_ENABLED=false` and `SPRINGDOC_API_DOCS_ENABLED=false`.
 
 Known limitations:
 
 - Statistics are kept in memory: they are lost on restart and not shared between instances. The `RequestStatistics` port exists so that a shared store such as Redis can replace the in-memory one ([ADR-0009](docs/adr/0009-in-memory-statistics-store.md)).
 - The number of distinct requests tracked is unbounded (about 200 bytes each): a client sending millions of different valid requests grows memory. Keeping the answer exact requires it; an approximate algorithm would be a deviation from the statement.
 
-Health probes, metrics, structured logging, Docker image: not implemented yet.
+Docker image: not implemented yet.
 
 ## Project history
 

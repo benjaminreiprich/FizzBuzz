@@ -1,3 +1,32 @@
 spring:
   application:
     name: fizzbuzz-api
+  lifecycle:
+    # How long in-flight requests may still run once shutdown starts (Spring Boot's default, made explicit).
+    timeout-per-shutdown-phase: 30s
+
+server:
+  # Finish in-flight requests on shutdown instead of cutting them (Spring Boot's default, made explicit).
+  shutdown: graceful
+
+management:
+  server:
+    # Probes and metrics stay off the public port: only the internal network should reach it (ADR-0011).
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        # Everything else (env, beans, heapdump...) can reveal configuration or memory content.
+        include: health, prometheus
+  endpoint:
+    health:
+      probes:
+        # /actuator/health/liveness and /actuator/health/readiness, for Kubernetes or any orchestrator.
+        enabled: true
+
+springdoc:
+  # Kept in production on purpose: a public read-only API whose documentation reveals nothing sensitive (ADR-0011).
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
