@@ -36,6 +36,7 @@
         <spotless-maven-plugin.version>3.10.3</spotless-maven-plugin.version>
         <palantir-java-format.version>2.102.0</palantir-java-format.version>
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+        <jqwik.version>1.10.1</jqwik.version>
         <coverage.line.minimum>0.90</coverage.line.minimum>
         <!-- Default so that @{argLine} resolves even when no plugin (e.g. JaCoCo) contributes to it. -->
         <argLine/>
@@ -50,6 +51,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>net.jqwik</groupId>
+            <artifactId>jqwik</artifactId>
+            <version>${jqwik.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

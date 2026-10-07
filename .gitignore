@@ -1,6 +1,8 @@
 # Build output
 target/
 .mvn/wrapper/maven-wrapper.jar
+# jqwik replays previously failing samples from this local file
+.jqwik-database
 
 # Local working files, never committed: phase notes and AI assistant setup
 NOTES.md
