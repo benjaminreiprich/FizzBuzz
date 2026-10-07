@@ -1,0 +1,5 @@
+# LF everywhere, so a commit from Windows cannot break mvnw on Linux CI.
+* text=auto eol=lf
+
+# Windows scripts need CRLF.
+*.cmd text eol=crlf
