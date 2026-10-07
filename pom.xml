@@ -37,6 +37,7 @@
         <palantir-java-format.version>2.102.0</palantir-java-format.version>
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
         <jqwik.version>1.10.1</jqwik.version>
+        <archunit.version>1.5.1</archunit.version>
         <coverage.line.minimum>0.90</coverage.line.minimum>
         <!-- Default so that @{argLine} resolves even when no plugin (e.g. JaCoCo) contributes to it. -->
         <argLine/>
@@ -58,6 +59,13 @@
             <groupId>net.jqwik</groupId>
             <artifactId>jqwik</artifactId>
             <version>${jqwik.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>${archunit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

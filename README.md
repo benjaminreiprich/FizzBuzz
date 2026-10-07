@@ -39,7 +39,7 @@ src/main/java/io/github/benjaminreiprich/fizzbuzz/
     └── FizzBuzzGenerator.java   FizzBuzzQuery -> List<String>
 ```
 
-**Dependency rule:** the domain depends only on the JDK, so business rules can be read and tested without Spring.
+**Dependency rule:** the domain depends only on the JDK, so business rules can be read and tested without Spring. `ArchitectureTest` (ArchUnit) fails the build if a domain class depends on anything else.
 
 The `api`, `application` and `infrastructure` layers are not implemented yet.
 
@@ -60,8 +60,9 @@ Not implemented yet.
 |---|---|
 | Unit | `FizzBuzzQueryTest` (invariants), `FizzBuzzGeneratorTest` (specification example and edge cases) |
 | Property-based (jqwik) | `FizzBuzzGeneratorPropertiesTest`: each rule of the specification checked on 1,000 random queries |
+| Architecture (ArchUnit) | `ArchitectureTest`: the domain depends only on the JDK |
 | Smoke test (Spring context starts) | `FizzBuzzApplicationTests` |
-| Slice / integration / architecture tests | Not implemented yet |
+| Slice / integration tests | Not implemented yet |
 
 Everything runs with `./mvnw verify`, which also enforces:
 
@@ -81,4 +82,4 @@ Not implemented yet.
 ## Project history
 
 - **Phase 0 — Bootstrap**: Spring Boot 4.1.1 / Java 25 project with Maven Wrapper, Spotless and JaCoCo gates, smoke test, GitHub Actions CI, first ADRs.
-- **Phase 1 — Domain**: `FizzBuzzQuery` (invariants enforced at construction) and `FizzBuzzGenerator`, covered by example-based and property-based (jqwik) tests.
+- **Phase 1 — Domain**: `FizzBuzzQuery` (invariants enforced at construction) and `FizzBuzzGenerator`, covered by example-based and property-based (jqwik) tests; domain purity enforced by ArchUnit.
