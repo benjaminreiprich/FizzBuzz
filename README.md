@@ -1,5 +1,7 @@
 # FizzBuzz REST API
 
+[![CI](https://github.com/benjaminreiprich/FizzBuzz/actions/workflows/ci.yml/badge.svg)](https://github.com/benjaminreiprich/FizzBuzz/actions/workflows/ci.yml)
+
 ## Overview
 
 A Spring Boot web service that will expose a configurable FizzBuzz endpoint (two divisors, two replacement strings, an upper limit) plus a statistics endpoint returning the most frequent request.
