@@ -35,10 +35,10 @@
 
     <properties>
         <java.version>25</java.version>
-        <spotless-maven-plugin.version>3.10.3</spotless-maven-plugin.version>
+        <spotless-maven-plugin.version>3.10.4</spotless-maven-plugin.version>
         <palantir-java-format.version>2.102.0</palantir-java-format.version>
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
-        <jqwik.version>1.10.1</jqwik.version>
+        <jqwik.version>1.10.2</jqwik.version>
         <archunit.version>1.5.1</archunit.version>
         <springdoc-openapi.version>3.1.1</springdoc-openapi.version>
         <coverage.line.minimum>0.90</coverage.line.minimum>
